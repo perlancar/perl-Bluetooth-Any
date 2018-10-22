@@ -46,7 +46,35 @@ sub turn_on_bluetooth {
         log_trace "Using rfkill to turn bluetooth on";
         system "rfkill", "unblock", "bluetooth";
         unless ($?) {
-            return [200, "OK", {'func.method'=>'rfkill'}];
+            return [200, "OK", undef, {'func.method'=>'rfkill'}];
+        }
+    }
+    [500, "Failed, no methods succeeded"];
+}
+
+$SPEC{'turn_off_bluetooth'} = {
+    v => 1.1,
+    summary => 'Turn off Bluetooth',
+    description => <<'_',
+
+Will try:
+- rfkill
+
+_
+};
+sub turn_off_bluetooth {
+    my %args = @_;
+
+  RFKILL:
+    {
+        unless (which("rfkill")) {
+            log_trace "Cannot find rfkill, skipping using rfkill";
+            last;
+        }
+        log_trace "Using rfkill to turn bluetooth off";
+        system "rfkill", "block", "bluetooth";
+        unless ($?) {
+            return [200, "OK", undef, {'func.method'=>'rfkill'}];
         }
     }
     [500, "Failed, no methods succeeded"];
@@ -86,11 +114,11 @@ sub bluetooth_is_on {
                 next;
             } else {
                 if (/blocked:\s*yes/i) {
-                    return [200, "OK", 0, {'func.method'=>'rfkill'}];
+                    return [200, "OK", 0, {'func.method'=>'rfkill', 'cmdline.result'=>'Bluetooth is OFF', 'cmdline.exit_code'=>1}];
                 }
             }
         }
-        return [200, "OK", 1, {'func.method'=>'rfkill'}];
+        return [200, "OK", 1, {'func.method'=>'rfkill', 'cmdline.result'=>'Bluetooth is on', 'cmdline.exit_code'=>0}];
     }
     [500, "Failed, no methods succeeded"];
 }
