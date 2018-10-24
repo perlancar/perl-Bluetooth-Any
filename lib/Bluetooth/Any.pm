@@ -101,9 +101,10 @@ sub bluetooth_is_on {
         }
         log_trace "Using rfkill to check bluetooth status";
         my $out;
-        system {capture_stdout=>\$out}, "rfkill", "block", "bluetooth";
+        system {capture_stdout=>\$out}, "rfkill", "list", "bluetooth";
         last if $?;
         my $in_bt;
+        my $unblocked;
         for (split /^/m, $out) {
             if (/^\d/) {
                 if (/bluetooth/i) {
@@ -115,10 +116,18 @@ sub bluetooth_is_on {
             } else {
                 if (/blocked:\s*yes/i) {
                     return [200, "OK", 0, {'func.method'=>'rfkill', 'cmdline.result'=>'Bluetooth is OFF', 'cmdline.exit_code'=>1}];
+                } elsif (/blocked:\s*no/i) {
+                    $unblocked = 0;
                 }
             }
         }
-        return [200, "OK", 1, {'func.method'=>'rfkill', 'cmdline.result'=>'Bluetooth is on', 'cmdline.exit_code'=>0}];
+
+        if (defined $unblocked) {
+            return [200, "OK", 1, {'func.method'=>'rfkill', 'cmdline.result'=>'Bluetooth is on', 'cmdline.exit_code'=>0}];
+        } else {
+            log_warn "Cannot detect 'blocked: no' from 'rfkill list' output, skipping using rfkill";
+            last;
+        }
     }
     [500, "Failed, no methods succeeded"];
 }
